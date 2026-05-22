@@ -29,7 +29,6 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
 import java.io.IOException
-import java.util.Date
 import kotlin.system.measureTimeMillis
 
 /**
@@ -131,7 +130,7 @@ class SyncManager(
         if (remoteBackup === syncData.backup) {
             // nothing changed
             logcat(LogPriority.DEBUG) { "Skip restore due to remote was overwrite from local" }
-            syncPreferences.lastSyncTimestamp.set(Date().time)
+            syncPreferences.lastSyncTimestamp.set(System.currentTimeMillis())
             notifier.showSyncSuccess("Sync completed successfully")
             return
         }
@@ -145,7 +144,7 @@ class SyncManager(
         // Check if it's first sync based on lastSyncTimestamp
         if (syncPreferences.lastSyncTimestamp.get() == 0L && databaseManga.isNotEmpty()) {
             // It's first sync no need to restore data. (just update remote data)
-            syncPreferences.lastSyncTimestamp.set(Date().time)
+            syncPreferences.lastSyncTimestamp.set(System.currentTimeMillis())
             notifier.showSyncSuccess("Updated remote data successfully")
             return
         }
@@ -174,7 +173,7 @@ class SyncManager(
             !hasExtensionRepoChanges
         ) {
             // update the sync timestamp
-            syncPreferences.lastSyncTimestamp.set(Date().time)
+            syncPreferences.lastSyncTimestamp.set(System.currentTimeMillis())
             notifier.showSyncSuccess("Sync completed successfully")
             return
         }
@@ -211,7 +210,7 @@ class SyncManager(
             )
 
             // update the sync timestamp
-            syncPreferences.lastSyncTimestamp.set(Date().time)
+            syncPreferences.lastSyncTimestamp.set(System.currentTimeMillis())
         } else {
             logcat(LogPriority.ERROR) { "Failed to write sync data to file" }
         }
