@@ -13,6 +13,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkQuery
 import androidx.work.WorkerParameters
 import eu.kanade.domain.sync.SyncPreferences
+import kotlinx.coroutines.guava.await
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.isOnline
@@ -111,12 +112,12 @@ class SyncDataJob(private val context: Context, workerParams: WorkerParameters) 
             context.workManager.enqueueUniqueWork(tag, ExistingWorkPolicy.KEEP, request)
         }
 
-        fun stop(context: Context) {
+        suspend fun stop(context: Context) {
             val wm = context.workManager
             val workQuery = WorkQuery.Builder.fromTags(listOf(TAG_JOB, TAG_AUTO, TAG_MANUAL))
                 .addStates(listOf(WorkInfo.State.RUNNING))
                 .build()
-            wm.getWorkInfos(workQuery).get()
+            wm.getWorkInfos(workQuery).await()
                 // Should only return one work but just in case
                 .forEach {
                     wm.cancelWorkById(it.id)
