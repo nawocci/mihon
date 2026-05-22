@@ -9,7 +9,7 @@ import java.util.UUID
 class SyncPreferences(
     private val preferenceStore: PreferenceStore,
 ) {
-    val clientHost: Preference<String> = preferenceStore.getString("sync_client_host", "https://sync.tachiyomi.org")
+    val clientHost: Preference<String> = preferenceStore.getString("sync_client_host", "")
     val clientAPIKey: Preference<String> = preferenceStore.getString("sync_client_api_key", "")
     val lastSyncTimestamp: Preference<Long> = preferenceStore.getLong(Preference.appStateKey("last_sync_timestamp"), 0L)
 
