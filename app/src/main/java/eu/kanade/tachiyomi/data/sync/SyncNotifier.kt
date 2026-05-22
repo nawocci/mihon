@@ -5,11 +5,12 @@ import android.graphics.BitmapFactory
 import androidx.core.app.NotificationCompat
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.core.security.SecurityPreferences
-import eu.kanade.tachiyomi.data.notification.NotificationReceiver
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
+import tachiyomi.core.common.i18n.stringResource
+import tachiyomi.i18n.MR
 import uy.kohesive.injekt.injectLazy
 
 class SyncNotifier(private val context: Context) {
@@ -40,7 +41,7 @@ class SyncNotifier(private val context: Context) {
 
     fun showSyncProgress(content: String = "", progress: Int = 0, maxAmount: Int = 100): NotificationCompat.Builder {
         val builder = with(progressNotificationBuilder) {
-            setContentTitle(context.getString(R.string.syncing_library))
+            setContentTitle(context.stringResource(MR.strings.syncing_library))
 
             if (!preferences.hideNotificationContent.get()) {
                 setContentText(content)
@@ -61,7 +62,7 @@ class SyncNotifier(private val context: Context) {
         context.cancelNotification(Notifications.ID_RESTORE_PROGRESS)
 
         with(completeNotificationBuilder) {
-            setContentTitle(context.getString(R.string.sync_error))
+            setContentTitle(context.stringResource(MR.strings.sync_error))
             setContentText(error)
 
             show(Notifications.ID_RESTORE_COMPLETE)
@@ -72,7 +73,7 @@ class SyncNotifier(private val context: Context) {
         context.cancelNotification(Notifications.ID_RESTORE_PROGRESS)
 
         with(completeNotificationBuilder) {
-            setContentTitle(context.getString(R.string.sync_complete))
+            setContentTitle(context.stringResource(MR.strings.sync_complete))
             setContentText(message)
 
             show(Notifications.ID_RESTORE_COMPLETE)
