@@ -12,12 +12,12 @@ import eu.kanade.tachiyomi.data.backup.models.BackupChapter
 import eu.kanade.tachiyomi.data.backup.models.BackupManga
 import eu.kanade.tachiyomi.data.backup.restore.BackupRestoreJob
 import eu.kanade.tachiyomi.data.backup.restore.RestoreOptions
-import eu.kanade.tachiyomi.data.backup.restore.restorers.MangaRestorer
 import eu.kanade.tachiyomi.data.sync.service.SyncData
 import eu.kanade.tachiyomi.data.sync.service.SyncYomiSyncService
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import logcat.LogPriority
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.data.Chapters
 import tachiyomi.data.Database
@@ -25,6 +25,7 @@ import tachiyomi.data.manga.MangaMapper.mapManga
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.manga.model.MangaUpdate
+import tachiyomi.i18n.MR
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
@@ -42,7 +43,6 @@ class SyncManager(
     private val getCategories: GetCategories = Injekt.get(),
     private val syncPreferences: SyncPreferences = Injekt.get(),
     private val database: Database = Injekt.get(),
-    private val mangaRestorer: MangaRestorer = MangaRestorer(),
     private val updateManga: UpdateManga = Injekt.get(),
     private var json: Json = Json {
         encodeDefaults = true
@@ -131,13 +131,13 @@ class SyncManager(
             // nothing changed
             logcat(LogPriority.DEBUG) { "Skip restore due to remote was overwrite from local" }
             syncPreferences.lastSyncTimestamp.set(System.currentTimeMillis())
-            notifier.showSyncSuccess("Sync completed successfully")
+            notifier.showSyncSuccess(context.stringResource(MR.strings.sync_completed_successfully))
             return
         }
 
         // Stop the sync early if the remote backup is null or empty
         if (remoteBackup.backupManga.isEmpty() && remoteBackup.backupCategories.isEmpty() && remoteBackup.backupSources.isEmpty()) {
-            notifier.showSyncError("No data found on remote server.")
+            notifier.showSyncError(context.stringResource(MR.strings.sync_no_data_found))
             return
         }
 
@@ -145,12 +145,13 @@ class SyncManager(
         if (syncPreferences.lastSyncTimestamp.get() == 0L && databaseManga.isNotEmpty()) {
             // It's first sync no need to restore data. (just update remote data)
             syncPreferences.lastSyncTimestamp.set(System.currentTimeMillis())
-            notifier.showSyncSuccess("Updated remote data successfully")
+            notifier.showSyncSuccess(context.stringResource(MR.strings.sync_updated_remote_successfully))
             return
         }
 
-        val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
-        updateNonFavorites(nonFavorites)
+        val allManga = getAllMangaFromDB()
+        val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup, allManga)
+        updateNonFavorites(nonFavorites, allManga)
 
         val newSyncData = backup.copy(
             backupManga = filteredFavorites,
@@ -174,7 +175,7 @@ class SyncManager(
         ) {
             // update the sync timestamp
             syncPreferences.lastSyncTimestamp.set(System.currentTimeMillis())
-            notifier.showSyncSuccess("Sync completed successfully")
+            notifier.showSyncSuccess(context.stringResource(MR.strings.sync_completed_successfully))
             return
         }
 
@@ -288,13 +289,12 @@ class SyncManager(
      * @return a Pair of lists, where the first list contains different favorite manga
      * and the second list contains non-favorite manga.
      */
-    private suspend fun filterFavoritesAndNonFavorites(backup: Backup): Pair<List<BackupManga>, List<BackupManga>> {
+    private suspend fun filterFavoritesAndNonFavorites(backup: Backup, databaseManga: List<Manga>): Pair<List<BackupManga>, List<BackupManga>> {
         val favorites = mutableListOf<BackupManga>()
         val nonFavorites = mutableListOf<BackupManga>()
         val logTag = "filterFavoritesAndNonFavorites"
 
         val elapsedTimeMillis = measureTimeMillis {
-            val databaseManga = getAllMangaFromDB()
             val localMangaMap = databaseManga.associateBy {
                 Triple(it.source, it.url, it.title)
             }
@@ -337,8 +337,7 @@ class SyncManager(
      * Updates the non-favorite manga in the local database with their favorite status from the backup.
      * @param nonFavorites the list of non-favorite BackupManga objects from the backup.
      */
-    private suspend fun updateNonFavorites(nonFavorites: List<BackupManga>) {
-        val localMangaList = getAllMangaFromDB()
+    private suspend fun updateNonFavorites(nonFavorites: List<BackupManga>, localMangaList: List<Manga>) {
 
         val localMangaMap = localMangaList.associateBy { Triple(it.source, it.url, it.title) }
 

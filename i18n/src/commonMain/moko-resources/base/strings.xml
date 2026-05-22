@@ -37,6 +37,9 @@
     <!-- Sync settings (ported from SY) -->
     <string name="sync_error">Syncing library failed</string>
     <string name="sync_complete">Syncing library complete</string>
+    <string name="sync_completed_successfully">Sync completed successfully</string>
+    <string name="sync_updated_remote_successfully">Updated remote data successfully</string>
+    <string name="sync_no_data_found">No data found on remote server.</string>
     <string name="sync_in_progress">Sync is already in progress</string>
     <string name="pref_sync_host">Host</string>
     <string name="pref_sync_host_summ">Enter the host address for synchronizing your library</string>
