@@ -606,6 +606,11 @@ class ReaderViewModel @JvmOverloads constructor(
 
             upsertHistory.await(HistoryUpdate(chapterId, endTime, sessionReadDuration))
             chapterReadStartTime = null
+            
+            if (syncPreferences.isSyncEnabled() && syncPreferences.getSyncTriggerOptions().syncOnChapterRead) {
+                val context = uy.kohesive.injekt.Injekt.get<android.app.Application>()
+                eu.kanade.tachiyomi.data.sync.SyncDataJob.startNow(context)
+            }
         }
     }
 
