@@ -5,6 +5,7 @@ import eu.kanade.domain.sync.SyncPreferences
 import eu.kanade.tachiyomi.data.backup.models.Backup
 import eu.kanade.tachiyomi.data.sync.SyncNotifier
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.PUT
 import eu.kanade.tachiyomi.network.await
@@ -20,7 +21,6 @@ import logcat.LogPriority
 import logcat.logcat
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
@@ -35,7 +35,14 @@ class SyncYomiSyncService(
     private val notifier: SyncNotifier,
 
     private val protoBuf: ProtoBuf = Injekt.get(),
+    networkHelper: NetworkHelper = Injekt.get(),
 ) : SyncService(context, json, syncPreferences) {
+
+    private val syncClient = networkHelper.client.newBuilder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
 
     private class SyncYomiException(message: String?) : Exception(message)
 
@@ -63,7 +70,7 @@ class SyncYomiSyncService(
             val (remoteData, etag) = pullSyncData()
 
             val finalSyncData = if (remoteData != null) {
-                assert(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
+                check(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
                 logcat(LogPriority.DEBUG, "SyncService") {
                     "Try update remote data with ETag($etag)"
                 }
@@ -114,12 +121,11 @@ class SyncYomiSyncService(
             headers = headers,
         )
 
-        val client = OkHttpClient()
-        val response = client.newCall(downloadRequest).await()
+        val response = syncClient.newCall(downloadRequest).await()
 
         if (response.code == 304) {
             // not modified
-            assert(lastETag.isNotEmpty())
+            check(lastETag.isNotEmpty())
             logcat(LogPriority.INFO) {
                 "Remote server not modified"
             }
@@ -165,7 +171,7 @@ class SyncYomiSyncService(
         val host = syncPreferences.clientHost.get()
         val apiKey = syncPreferences.clientAPIKey.get()
         val uploadUrl = "$host/api/sync/content"
-        val timeout = 30L
+
 
         val headersBuilder = Headers.Builder().add("X-API-Token", apiKey)
         if (eTag.isNotEmpty()) {
@@ -173,12 +179,7 @@ class SyncYomiSyncService(
         }
         val headers = headersBuilder.build()
 
-        // Set timeout to 30 seconds
-        val client = OkHttpClient.Builder()
-            .connectTimeout(timeout, TimeUnit.SECONDS)
-            .readTimeout(timeout, TimeUnit.SECONDS)
-            .writeTimeout(timeout, TimeUnit.SECONDS)
-            .build()
+        // Use the shared sync client (timeouts already configured)
 
         val byteArray = protoBuf.encodeToByteArray(Backup.serializer(), backup)
         if (byteArray.isEmpty()) {
@@ -192,7 +193,7 @@ class SyncYomiSyncService(
             body = body,
         )
 
-        val response = client.newCall(uploadRequest).await()
+        val response = syncClient.newCall(uploadRequest).await()
 
         if (response.isSuccessful) {
             val newETag = response.headers["ETag"]
@@ -237,8 +238,7 @@ class SyncYomiSyncService(
                     body = requestBody,
                 )
 
-                val client = OkHttpClient()
-                client.newCall(request).await().close()
+                syncClient.newCall(request).await().close()
             } catch (e: Exception) {
                 logcat(LogPriority.ERROR) { "Failed to report sync event: ${e.message}" }
             }
