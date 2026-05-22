@@ -103,6 +103,8 @@ import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.ByteArrayOutputStream
+import eu.kanade.tachiyomi.data.sync.SyncDataJob
+import eu.kanade.domain.sync.SyncPreferences
 
 class ReaderActivity : BaseActivity() {
 
@@ -118,6 +120,7 @@ class ReaderActivity : BaseActivity() {
 
     private val readerPreferences = Injekt.get<ReaderPreferences>()
     private val preferences = Injekt.get<BasePreferences>()
+    private val syncPreferences = Injekt.get<SyncPreferences>()
 
     lateinit var binding: ReaderActivityBinding
 
@@ -157,6 +160,11 @@ class ReaderActivity : BaseActivity() {
         }
 
         enableEdgeToEdge()
+
+        if (syncPreferences.isSyncEnabled() && syncPreferences.getSyncTriggerOptions().syncOnChapterOpen) {
+            SyncDataJob.startNow(this)
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
