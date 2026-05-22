@@ -290,7 +290,12 @@ class MainActivity : BaseActivity() {
         super.onResume()
         if (syncPreferences.isSyncEnabled()) {
             if (syncPreferences.getSyncTriggerOptions().syncOnAppResume) {
-                SyncDataJob.startNow(this)
+                val lastSync = syncPreferences.lastSyncTimestamp.get()
+                val now = System.currentTimeMillis()
+                // Only sync if last sync was more than 10 minutes ago
+                if (now - lastSync > 10 * 60 * 1000L) {
+                    SyncDataJob.startNow(this)
+                }
             }
         }
     }
